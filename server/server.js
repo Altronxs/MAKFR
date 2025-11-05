@@ -2,8 +2,9 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-const User = require('./config')
+const { User, getUserDataByEmail} = require('./config')
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const generateJsonOutput = require('./gemini-config');
 
 // Load environment variables
 require('dotenv').config(); 
@@ -23,6 +24,37 @@ app.post('/create', async (req, res) => {
   await User.add(data);
   res.send({ msg:"User added" });
 });
+
+app.get('/user', async (req, res) => {
+  const email = req.body.email;
+  const response = await getUserDataByEmail(email);
+  //console.log('User data response:', response);
+  res.json({ response });
+});
+
+const userPrompt = "Generate a user profile for a random customer a name and email address also random generated";
+generateJsonOutput(userPrompt)
+  .then((data) => {
+    console.log(data); // Executed if the promise resolves
+    return "Processed " + data; // Return a new value for the next .then()
+  })
+  .catch(error => console.error("Error generating JSON:", error));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.post('/api/gemini-text', async (req, res) => {
   const { prompt } = req.body;
