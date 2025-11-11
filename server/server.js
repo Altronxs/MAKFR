@@ -1,18 +1,30 @@
+const PDFParser = require('pdf-parse'); 
+const mammoth = require('mammoth');
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
+const multer = require('multer');
+const fs = require('node:fs/promises');
 const cors = require('cors');
-const { User, Applicants, Applications, ReviewOutcomes, getData } = require('./config')
+const { User, Applicants, Applications, ReviewOutcomes, jobPostings, getData } = require('./config')
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { generateJsonOutput, uploadUserData, geminiTextImage } = require('./gemini-config');
 
 // Load environment variables
 require('dotenv').config(); 
-
-
 const app = express();
 const PORT = 3000;
 const API_KEY = process.env.GEMINI_API_KEY;
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname); // e.g., '.pdf'
+    const baseName = path.basename(file.originalname, ext);
+    cb(null, `${baseName}-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage: storage });
 
 
 
@@ -26,7 +38,6 @@ app.listen(PORT, () => {
 });
 
 
-
 app.post('/create', async (req, res) => {
   const data = req.body;
   await User.add(data);
@@ -36,14 +47,56 @@ app.post('/create', async (req, res) => {
 app.post('/applicant', async (req, res) => {
   const data = req.body;
   await Applicants.add(data);
-  res.send({ msg:"User added" });
+  res.send({ msg:"You have succesfully signed in" });
 });
 
-app.post('/applications', async (req, res) => {
+app.post('/job-posting', async (req, res) => {
   const data = req.body;
-  await Applications.add(data);
-  res.send({ msg:"User added" });
+  data.forEach( async (job) => {
+    await jobPostings.add(job);
+  });
+  res.send({ msg:"job posting(s) added!!" });
 });
+
+app.post('/applications', upload.single('document'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No file uploaded.');
+  }
+  const filePath = req.file.path;
+  try {
+    const data = await fs.readFile(filePath);
+   
+    //const pdf = await PDFParser(data);
+    //console.log(path.extname(filePath).toLowerCase());
+    const rawText = await extractTextFromBuffer(data, path.extname(filePath).toLowerCase()) + "";
+      
+    // Delete the local file after successful processing
+    await fs.unlink(filePath);
+
+    const now = new Date();
+    const formattedTime = now.toISOString().slice(0, 19) + 'Z';
+
+    const applicationJson = {
+      applicantId: req.body.applicantId,
+      jobId:  req.body.jobId ,
+      submissionDate: formattedTime,
+      resumeText: rawText,
+      currentStatus: false
+    } 
+    await Applications.add(applicationJson);
+    //console.log("Application data saved:", applicationJson);
+    res.json({ msg: 'Application submitted successfully' });
+  } catch (error) {
+    console.error("Error extracting text locally:", error);
+
+    // Ensure local file is deleted even if extraction fails
+    await fs.unlink(filePath).catch(err => console.error("Error deleting local file:", err));
+    
+    // Send the error response and RETURN immediately
+    return res.status(500).json({ error: 'Failed to extract text' });
+  }
+});
+
 
 app.get('/user', async (req, res) => {
   const email = req.body.email;
@@ -56,10 +109,15 @@ async function reviewAi() {
   const response = await getData(Applications, 'currentStatus', '==', false);
   const snapshot = await response.get();
   snapshot.forEach(async (doc) => {
+    //console.log('Reviewing application:', doc.id, doc.data().jobId);
+    const getJob = await jobPostings.doc(doc.data().jobId).get();
     const applicationsRef = Applications.doc(doc.id);
+    const now = new Date();
+    const formattedTime = now.toISOString().slice(0, 19) + 'Z';
     const responseSchema = {
         type: "object",
         properties: {
+            applicantId: { type: "string", description: "The unique identifier of the applicant being reviewed." },
             reviewType: { type: "string", description: "Type of review conducted by AI. either AI_screen or Human" },
             decision: { type: "string", description: "The decision made by the AI reviewer: Qualified, Not Qualified, Human Review Requested " },
             reviewTimestamp: { type: "string", format: "date-time", description: "The timestamp when the review was conducted." },
@@ -71,18 +129,22 @@ async function reviewAi() {
     };
 
     prompt = [];
-    prompt.push({ text: "Review the following applicant's application and provide a decision based on the qualifications provided" });
+    prompt.push({ text: "Review the following applicant's application and provide a decision based on the qualifications provided. NOTE: name and any personal information was redacted" });
     prompt.push({ text: JSON.stringify(doc.data()) });
+    prompt.push({ text: "Also consider the job posting details: " });
+    prompt.push({ text: JSON.stringify(getJob.data()) });
     
     const aiReview = await generateJsonOutput(prompt, responseSchema);
-    await ReviewOutcomes.add(aiReview);
+    aiReview.reviewTimestamp = formattedTime;
+    aiReview.reviewerId = null;
+    await ReviewOutcomes.doc(doc.id).set(aiReview);
     await applicationsRef.update({
       currentStatus:  true
     });
-    console.log('AI Review:', doc.id);
+    
   });
 }
-
+//reviewAi();
 setInterval(() => {
   console.log("Performing occasional check...");
   reviewAi();
@@ -90,7 +152,18 @@ setInterval(() => {
 
 
 
-
+async function extractTextFromBuffer(buffer, fileExtension) {
+    if (fileExtension === '.docx') {
+        const result = await mammoth.extractRawText({ buffer: buffer });
+        //console.log("Extracted DOCX text:", result.value);
+        return result.value.toString();
+    } else if (fileExtension === '.pdf') {
+        const data = await PDFParser(buffer);
+        return data.text;
+    } else {
+        throw new Error("Unsupported file type. Only DOCX and PDF are supported.");
+    }
+}
 
 
 

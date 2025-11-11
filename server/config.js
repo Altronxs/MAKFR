@@ -15,13 +15,14 @@ try {
     const Applicants = db.collection('applicants');
     const Applications = db.collection('applications');
     const ReviewOutcomes = db.collection('reviewOutcomes');
+    const jobPostings = db.collection('jobPostings');
 
     const getData = async ( database, p1, boolean, p2) => {
         const usersData = await database.where(p1, boolean, p2);
         return usersData;
     }
 
-    module.exports = { User, Applicants, Applications, ReviewOutcomes, getData };
+    module.exports = { User, Applicants, Applications, ReviewOutcomes, jobPostings, getData };
 } catch (error) {
     console.error("Firebase service account key file is missing. Please provide 'makfr-hacc-firebase-adminsdk-fbsvc.json'.");
     process.exit(1);
