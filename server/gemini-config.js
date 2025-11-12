@@ -4,12 +4,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 
-
-// Define the expected JSON schema for the response
-
-
-
-
 // Function to generate JSON output based on a prompt
 async function generateJsonOutput(prompt, responseSchema) {
     const model = genAI.getGenerativeModel({
