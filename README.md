@@ -6,7 +6,7 @@ This README explains how to run the project locally, where the important files a
 
 Made for local development. Keep secret keys out of version control.
 
-If you need any help with environment setup or authentication (env vars, Firebase, API keys) please contact @altronxs — they can provide the required credentials and guidance.
+If you need any help with environment setup or authentication (env vars, Firebase, API keys) please contact @altronxs or email kyleboy1010@gmail.com — they can provide the required credentials and guidance.
 
 ## Repo layout
 
