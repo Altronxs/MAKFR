@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react'
       '/api': { // Any request starting with /api will be proxied
         target: 'http://localhost:3000', // Your backend API's address
         changeOrigin: true, // Needed for virtual hosted sites
-        rewrite: (path) => path.replace(/^\/api/, ''), // Remove /api prefix from request to backend
+        // Don't rewrite the path - keep /api in the URL
       },
     },
   },

@@ -110,7 +110,7 @@ html, body {
 
 /* -- Theme */
 #theme {
-  
+  width: 100vw; /* full viewport width to remove right-side whitespace */
   height: 100vh; /* 100% of the viewport height */
   /* Add any other styling like background-color, etc. */
   background-color: #333333;
