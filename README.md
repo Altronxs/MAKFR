@@ -8,6 +8,12 @@ Made for local development. Keep secret keys out of version control.
 
 If you need any help with environment setup or authentication (env vars, Firebase, API keys) please contact @altronxs or email kyleboy1010@gmail.com — they can provide the required credentials and guidance.
 
+## How it Works
+
+<img width="1018" height="798" alt="Screenshot 2025-11-25 091410" src="https://github.com/user-attachments/assets/b2e34388-361c-4389-b8c7-d1f60bebf67f" />
+<img width="858" height="791" alt="Screenshot 2025-11-25 091434" src="https://github.com/user-attachments/assets/8f082003-65d8-4478-9a34-5b2a9bcb5987" />
+
+
 ## Repo layout
 
 - `server/` — Express API, file uploads, and AI + Firebase wiring. Run the server from here.
